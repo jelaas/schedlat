@@ -1,0 +1,13 @@
+schedlat [-hvim] [CPU#]
+ Version 1.2 By Jens Låås, UU 2009-2011.
+ -v --verbose
+ -i --interval SECONDS [2]
+ -m --minmax (do not compute average and median)
+ -a --average (compute average and median)
+ -p --pause NS -- nanosleep NS between intervals
+
+Output:
+<cpu>:<secs>:<max>:<min>:<avg>:<median>:<samples>:<overflows>:
+avg == -1 in case of overflow during calculation.
+overflows > 0 if number of samples does not fit in calibrated array.
+Values in usec.
