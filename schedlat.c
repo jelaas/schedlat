@@ -2,7 +2,7 @@
  * File: schedlat.c
  * Implements: scheduling latency measurements
  *
- * Copyright: Jens Låås, 2009-2011
+ * Copyright: Jens Låås, 2009-2014
  * Copyright license: According to GPL, see file COPYING in this directory.
  *
  */
@@ -11,13 +11,13 @@
 #include <stdio.h> 
 #include <time.h>
 #include <sys/time.h>
-#include <asm/types.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 
 #include <sched.h>
 #include <stdlib.h>
@@ -37,11 +37,12 @@ struct  {
 	int verbose;
 	int average;
 	int pause;
+	int prio;
 } conf;
 
-static __s64 average(__s64 *hist, int samples)
+static int64_t average(int64_t *hist, int samples)
 {
-        __s64 avg;
+        int64_t avg;
 	int g;
 	
 	/* aggregate results */
@@ -56,13 +57,13 @@ static __s64 average(__s64 *hist, int samples)
 
 int compar(const void *i1, const void *i2)
 {
-	const __s64 *i = i1, *j = i2;
+	const int64_t *i = i1, *j = i2;
 	return *i - *j;
 }
 
-__s64 median(__s64 *hist, int samples)
+int64_t median(int64_t *hist, int samples)
 {
-	qsort(hist, samples, sizeof(__s64), compar);
+	qsort(hist, samples, sizeof(int64_t), compar);
 	return hist[samples>>1];
 }
 
@@ -74,12 +75,12 @@ __s64 median(__s64 *hist, int samples)
 int cpumain(int cpu, int ncpu)
 {
 	struct timeval tv, prev_tv, sample_tv;
-        __s64 diff;
-        __u32 i,ii;
-        __s32 maxlat = MAXLAT;
-        __s32 minlat = MINLAT;
+        int64_t diff;
+        uint32_t i,ii;
+        int32_t maxlat = MAXLAT;
+        int32_t minlat = MINLAT;
 	cpu_set_t cpumask;
-	__s64 *hist;
+	int64_t *hist;
 	int ih, samples=0;
 	int calibrate=1;
 	int histsize=0;
@@ -152,7 +153,7 @@ int cpumain(int cpu, int ncpu)
 			if(conf.average && calibrate) {
 				histsize = samples+samples/2;
 				if(conf.verbose) printf("HISTSIZE = %d samples\n", histsize);
-				hist = malloc(sizeof(__s64)*histsize);
+				hist = malloc(sizeof(int64_t)*histsize);
 					      
 				if(!hist) exit(2);
 				calibrate = 0;
@@ -229,6 +230,7 @@ int main(int argc, char **argv)
 		       " -v --verbose\n"
 		       " -i --interval SECONDS [2]\n"
 		       " -m --minmax (do not compute average and median)\n"
+		       " -n --nice set priority [20, -20]\n"
 		       " -a --average (compute average and median)\n"
 		       " -p --pause NS -- nanosleep NS between intervals\n"
 		       "\n"
@@ -251,6 +253,8 @@ int main(int argc, char **argv)
 		;
 	if(jelopt_int(argv, 'p', "pause", &conf.pause, &err))
 		;
+	if(jelopt_int(argv, 'n', "nice", &conf.prio, &err))
+		;
 
 	argc = jelopt_final(argv, &err);
 
@@ -262,6 +266,10 @@ int main(int argc, char **argv)
 	
 	if(conf.verbose)
 		printf("Number of CPUS in system: %d\n", ncpu);
+
+	if(setpriority(PRIO_PROCESS, getpid(), conf.prio)) {
+		printf("Fail to set process priority to %d\n", conf.prio);
+	}
 	
 	if(argc > 1) {
 		cpu=atoi(argv[1]);
