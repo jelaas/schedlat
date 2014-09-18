@@ -85,6 +85,7 @@ int cpumain(int cpu, int ncpu)
 	int calibrate=1;
 	int histsize=0;
 	int overflows=0;
+	char buf[256];
 
 	CPU_ZERO(&cpumask);
 	CPU_SET(cpu, &cpumask);
@@ -127,11 +128,12 @@ int cpumain(int cpu, int ncpu)
 		if( (tv.tv_sec >= sample_tv.tv_sec) &&
 		    (tv.tv_usec >= sample_tv.tv_usec)) {
 			if(!calibrate) {
-				printf("%d:%d:%d:%d:%lld:%lld:%d:%d:\n",
+				snprintf(buf, sizeof(buf), "%d:%d:%d:%d:%lld:%lld:%d:%d:\n",
 				       cpu, ii, maxlat, minlat, 
 				       average(hist, samples),
 				       median(hist, samples),
 				       samples, overflows);
+				write(1, buf, strlen(buf));
 				maxlat = MAXLAT;
 				minlat = MINLAT;
 				ih=0;
@@ -139,11 +141,12 @@ int cpumain(int cpu, int ncpu)
 				overflows = 0;
 			}
 			if(!conf.average) {
-				printf("%d:%d:%d:%d:%d:%d:%d:%d:\n",
+				snprintf(buf, sizeof(buf), "%d:%d:%d:%d:%d:%d:%d:%d:\n",
 				       cpu, ii, maxlat, minlat, 
 				       0,
 				       0,
 				       samples, 0);
+				write(1, buf, strlen(buf));
 				maxlat = MAXLAT;
 				minlat = MINLAT;
 				samples = 0;
